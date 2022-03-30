@@ -1,3 +1,5 @@
+import sys
+sys.path.append('core')
 from raft import RAFT, RAFT_QUarter
 from utils import frame_utils
 from utils.utils import InputPadder
@@ -9,8 +11,7 @@ import glob
 import cv2
 import os
 import argparse
-import sys
-sys.path.append('core')
+
 
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -82,7 +83,7 @@ def demo(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--model', default="checkpoints/50000_raft_4.pth", help="restore checkpoint")
+        '--model', default="checkpoints/raft_4_60000/120000_raft_4.pth", help="restore checkpoint")
     parser.add_argument('--path', default="datasets/test",
                         help="dataset for evaluation")
     parser.add_argument('--small', action='store_true', help='use small model')

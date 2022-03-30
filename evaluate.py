@@ -164,12 +164,49 @@ def validate_kitti(model, iters=24):
 
     print("Validation simulations: %f, %f" % (epe, f1))
     return {'simulations-epe': epe, 'simulations-f1': f1}
+# @torch.no_grad()
+# def validate_simulations(model, iters=24,root='simulations'):
+#     model.eval()
+#     val_dataset = datasets.Database_2d_simulations_uffc(split='testing',root=root)
+#     print('Testring with %d image pairs' % len(val_dataset))
+#     out_list, epe_list = [], []
+#     for val_id in range(len(val_dataset)):
+#         image1, image2, flow_gt, valid_gt = val_dataset[val_id]
+#         image1 = image1[None].cuda()
+#         image2 = image2[None].cuda()
+
+#         padder = InputPadder(image1.shape, mode='simulations')
+#         image1, image2 = padder.pad(image1, image2)
+
+#         flow_low, flow_pr = model(image1, image2, iters=iters, test_mode=True)
+#         flow = padder.unpad(flow_pr[0]).cpu()
+
+#         epe = torch.sum((flow - flow_gt)**2, dim=0).sqrt()
+#         mag = torch.sum(flow_gt**2, dim=0).sqrt()
+
+#         epe = epe.view(-1)
+#         mag = mag.view(-1)
+#         val = valid_gt.view(-1) >= 0.5
+
+#         out = ((epe > 3.0) & ((epe/mag) > 0.05)).float()
+#         epe_list.append(epe[val].mean().item())
+#         out_list.append(out[val].cpu().numpy())
+
+#     epe_list = np.array(epe_list)
+#     out_list = np.concatenate(out_list)
+
+#     epe = np.mean(epe_list)
+#     f1 = 100 * np.mean(out_list)
+
+#     print("Validation simulations: %f, %f" % (epe, f1))
+#     return {'simulations-epe': epe, 'simulations-f1': f1}
+
 @torch.no_grad()
-def validate_simulations(model, iters=24):
+def validate_simulations(model, iters=24,root='simulations'):
     model.eval()
-    val_dataset = datasets.Database_2d_simulations_uffc(split='testing')
+    val_dataset = datasets.Database_2d_simulations_uffc(split='testing',root=root)
     print('Testring with %d image pairs' % len(val_dataset))
-    out_list, epe_list = [], []
+    out_list, epe_list,epe_all_list = [], [], []
     for val_id in range(len(val_dataset)):
         image1, image2, flow_gt, valid_gt = val_dataset[val_id]
         image1 = image1[None].cuda()
@@ -189,17 +226,17 @@ def validate_simulations(model, iters=24):
         val = valid_gt.view(-1) >= 0.5
 
         out = ((epe > 3.0) & ((epe/mag) > 0.05)).float()
+        
         epe_list.append(epe[val].mean().item())
         out_list.append(out[val].cpu().numpy())
-
     epe_list = np.array(epe_list)
     out_list = np.concatenate(out_list)
-
-    epe = np.mean(epe_list)
+    epe = np.mean(epe_list)*0.246768309574669
     f1 = 100 * np.mean(out_list)
 
-    print("Validation simulations: %f, %f" % (epe, f1))
+    print("Validation simulations:epe %f , f1 %f" % (epe, f1))
     return {'simulations-epe': epe, 'simulations-f1': f1}
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

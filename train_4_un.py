@@ -1,26 +1,26 @@
 from __future__ import print_function, division
+from raft import RAFT, RAFT_QUarter
+from torch.cuda.amp import GradScaler
+from utils.unsupervised_loss import unsup_loss
+import evaluate
+import datasets
+from utils import flow_viz
+from tqdm import tqdm
+import torch.optim as optim
+import torch.nn as nn
+import torch
+import matplotlib.pyplot as plt
+import matplotlib
+import numpy as np
+import time
+import cv2
+import os
+import argparse
 import sys
 sys.path.append('core')
 
-import argparse
-import os
-import cv2
-import time
-import numpy as np
-import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from tqdm import tqdm
-from raft import RAFT,RAFT_QUarter
-from utils import flow_viz
-import datasets
-import evaluate
-
-from torch.cuda.amp import GradScaler
 
 # exclude extremly large displacements
 MAX_FLOW = 400
@@ -40,7 +40,7 @@ def count_parameters(model):
 def sequence_loss(flow_preds, flow_gt, valid, gamma):
     """ Loss function defined over sequence of flow predictions """
 
-    n_predictions = len(flow_preds)    
+    n_predictions = len(flow_preds)
     flow_loss = 0.0
 
     # exclude invalid pixels and extremely large displacements
@@ -53,8 +53,38 @@ def sequence_loss(flow_preds, flow_gt, valid, gamma):
 
     epe = torch.sum((flow_preds[-1] - flow_gt)**2, dim=1).sqrt()
     epe = epe.view(-1)[valid.view(-1)]
+
     metrics = {
-        'epe': epe.mean().item()*0.246768309574669,
+        'epe': epe.mean().item(),
+        '1px': (epe < 1).float().mean().item(),
+        '3px': (epe < 3).float().mean().item(),
+        '5px': (epe < 5).float().mean().item(),
+    }
+
+    return flow_loss, metrics
+
+
+def unsequence_loss(flow_preds, flow_gt, img1, img2, valid, gamma):
+    """ Loss function defined over sequence of flow predictions """
+
+    n_predictions = len(flow_preds)
+    flow_loss = 0.0
+
+    # exclude invalid pixels and extremely large displacements
+    valid = (valid >= 0.5) & ((flow_gt**2).sum(dim=1).sqrt() < MAX_FLOW)
+
+    for i in range(n_predictions):
+        i_weight = gamma**(n_predictions - i - 1)
+        # i_loss = (flow_preds[i] - flow_gt).abs()
+        i_loss = unsup_loss(flow_preds[i], img1, img2)
+        flow_loss += i_weight * (valid[:, None] * i_loss).mean()
+
+    epe = torch.sum((flow_preds[-1] - flow_gt)**2, dim=1).sqrt()
+    epe = epe.view(-1)[valid.view(-1)]
+
+    metrics = {
+        'epe': epe.mean().item(),
+      		'loss': flow_loss.item(),
         '1px': (epe < 1).float().mean().item(),
         '3px': (epe < 3).float().mean().item(),
         '5px': (epe < 5).float().mean().item(),
@@ -65,7 +95,8 @@ def sequence_loss(flow_preds, flow_gt, valid, gamma):
 
 def fetch_optimizer(args, model):
     """ Create the optimizer and learning rate scheduler """
-    optimizer = optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wdecay, eps=args.epsilon)
+    optimizer = optim.AdamW(model.parameters(), lr=args.lr,
+                            weight_decay=args.wdecay, eps=args.epsilon)
 
     scheduler = optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.num_steps+100,
                                               pct_start=0.05, cycle_momentum=False, anneal_strategy='linear')
@@ -86,14 +117,19 @@ class Logger:
         self.val_results_dict = {}
 
     def _print_training_status(self):
-        metrics_data = [np.mean(self.running_loss_dict[k]) for k in sorted(self.running_loss_dict.keys())]
-        training_str = "[{:6d}, {:10.7f}] ".format(self.total_steps+1, self.scheduler.get_lr()[0])
-        metrics_str = ("{:10.4f}, "*len(metrics_data[:-1])).format(*metrics_data[:-1])
+        metrics_data = [np.mean(self.running_loss_dict[k])
+                        for k in sorted(self.running_loss_dict.keys())]
+        training_str = "[{:6d}, {:10.7f}] ".format(
+            self.total_steps+1, self.scheduler.get_lr()[0])
+        metrics_str = (
+            "{:10.4f}, "*len(metrics_data[:-1])).format(*metrics_data[:-1])
 
         # Compute time left
-        time_left_sec = (self.args.num_steps - (self.total_steps+1)) * metrics_data[-1]
+        time_left_sec = (self.args.num_steps -
+                         (self.total_steps+1)) * metrics_data[-1]
         time_left_sec = time_left_sec.astype(np.int)
-        time_left_hms = "{:02d}h{:02d}m{:02d}s".format(time_left_sec // 3600, time_left_sec % 3600 // 60, time_left_sec % 3600 % 60)
+        time_left_hms = "{:02d}h{:02d}m{:02d}s".format(
+            time_left_sec // 3600, time_left_sec % 3600 // 60, time_left_sec % 3600 % 60)
         time_left_hms = f"{time_left_hms:>12}"
         # print the training status
         print(training_str + metrics_str + time_left_hms)
@@ -119,7 +155,7 @@ class Logger:
 
 
 def main(args):
-    if args.model_name=='RAFT_QUarter':
+    if args.model_name == 'RAFT_QUarter':
         model = nn.DataParallel(RAFT_QUarter(args), device_ids=args.gpus)
     else:
         model = nn.DataParallel(RAFT(args), device_ids=args.gpus)
@@ -161,7 +197,8 @@ def train(model, train_loader, optimizer, scheduler, logger, scaler, args):
 
         flow_pred = model(image1, image2, iters=args.iters)
 
-        loss, metrics = sequence_loss(flow_pred, flow, valid, args.gamma)
+        loss, metrics = unsequence_loss(
+            flow_pred, flow, image1, image2, valid, args.gamma)
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)
 
@@ -191,7 +228,7 @@ def validate(model, args, logger):
     results = {}
 
     # Evaluate results
-    results.update(evaluate.validate_simulations(model.module,root=args.validation))
+    results.update(evaluate.validate_simulations(model.module))
     # logger.write_dict(results)
     # Record results in logger
     for key in results.keys():
@@ -232,17 +269,18 @@ if __name__ == '__main__':
                         help="name your experiment")
     parser.add_argument('--model_name', default='RAFT_QUarter',
                         help="RAFT_QUarter")
-    parser.add_argument('--stage', default='no_GE',
+    parser.add_argument('--stage', default='simulations',
                         help="determines which dataset to use for training")
     parser.add_argument(
-        '--restore_ckpt', default=None, help="restore checkpoint")
+        '--restore_ckpt', default='checkpoints/2000_raft_4.pth', help="restore checkpoint")
     parser.add_argument('--small', action='store_true', help='use small model')
     parser.add_argument(
-        '--validation', default='no_GE', type=str, nargs='+')
-    parser.add_argument('--output', type=str, default='checkpoints/no_GE', help='output directory to save checkpoints and plots')
+        '--validation', default='simulations', type=str, nargs='+')
+    parser.add_argument('--output', type=str, default='checkpoints/unsup',
+                        help='output directory to save checkpoints and plots')
 
     parser.add_argument('--lr', type=float, default=0.00025)
-    parser.add_argument('--num_steps', type=int, default=50000)
+    parser.add_argument('--num_steps', type=int, default=150000)
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--image_size', type=int,
                         nargs='+',  default=[448, 576])
@@ -254,14 +292,16 @@ if __name__ == '__main__':
     parser.add_argument('--dropout', type=float, default=0.0)
     parser.add_argument('--upsample-learn', action='store_true', default=False,
                         help='If True, use learned upsampling, otherwise, use bilinear upsampling.')
-    parser.add_argument('--gamma', type=float, default=0.8, help='exponential weighting')
+    parser.add_argument('--gamma', type=float, default=0.8,
+                        help='exponential weighting')
     parser.add_argument('--iters', type=int, default=12)
-    parser.add_argument('--val_freq', type=int, default=1,
+    parser.add_argument('--val_freq', type=int, default=10000,
                         help='validation frequency')
     parser.add_argument('--print_freq', type=int, default=100,
                         help='printing frequency')
 
-    parser.add_argument('--mixed_precision', default=True, help='use mixed precision')
+    parser.add_argument('--mixed_precision', default=True,
+                        help='use mixed precision')
 
     args = parser.parse_args()
 

@@ -222,20 +222,81 @@ class HD1K(FlowDataset):
 
 
 class Database_2d_simulations_uffc(FlowDataset):
-    def __init__(self, aug_params=None, split='training', root='datasets/all'):
+    def __init__(self, aug_params=None, split='training', root='simulations'):
         super().__init__(aug_params)
         if split == 'testing':
             self.is_test = True
-            txt = 'datasets/split_test.txt'
+            if root=='simulations':
+                txt = 'datasets/split_test.txt'
+            elif root=='ESAOTE':
+                txt='datasets/split/split_shebei/test_ESAOTE.txt'
+            elif root=='Hitachi':
+                txt='datasets/split/split_shebei/test_Hitachi.txt'
+            elif root=='Philips':
+                txt='datasets/split/split_shebei/test_Philips.txt'
+            elif root=='SAMSUNG':
+                txt='datasets/split/split_shebei/test_SAMSUNG.txt'
+            elif root=='Siemens':
+                txt='datasets/split/split_shebei/test_Siemens.txt'
+            elif root=='TOSHIBA':
+                txt='datasets/split/split_shebei/test_TOSHIBA.txt'
+            elif root=='GE':
+                txt='datasets/split/split_shebei/test_GE.txt'
+
+            elif root=='no_ESAOTE':
+                txt='datasets/split/split_company/split_test_ESAOTE.txt'
+            elif root=='no_Hitachi':
+                txt='datasets/split/split_company/split_test_Hitachi.txt'
+            elif root=='no_Philips':
+                txt='datasets/split/split_company/split_test_Philips.txt'
+            elif root=='no_SAMSUNG':
+                txt='datasets/split/split_company/split_test_SAMSUNG.txt'
+            elif root=='no_Siemens':
+                txt='datasets/split/split_company/split_test_Siemens.txt'
+            elif root=='no_TOSHIBA':
+                txt='datasets/split/split_company/split_test_TOSHIBA.txt'
+            elif root=='no_GE':
+                txt='datasets/split/split_company/split_test_GE.txt'
+            
         if split == 'training':
-            txt = 'datasets/split_train.txt'
+            if root=='simulations':
+                txt = 'datasets/split_train.txt'
+            elif root=='ESAOTE':
+                txt='datasets/split/split_shebei/train_ESAOTE.txt'
+            elif root=='Hitachi':
+                txt='datasets/split/split_shebei/train_Hitachi.txt'
+            elif root=='Philips':
+                txt='datasets/split/split_shebei/train_Philips.txt'
+            elif root=='SAMSUNG':
+                txt='datasets/split/split_shebei/train_SAMSUNG.txt'
+            elif root=='Siemens':
+                txt='datasets/split/split_shebei/train_Siemens.txt'
+            elif root=='TOSHIBA':
+                txt='datasets/split/split_shebei/train_TOSHIBA.txt'
+            elif root=='GE':
+                txt='datasets/split/split_shebei/train_GE.txt'
+
+            elif root=='no_ESAOTE':
+                txt='datasets/split/split_company/split_train_ESAOTE.txt'
+            elif root=='no_Hitachi':
+                txt='datasets/split/split_company/split_train_Hitachi.txt'
+            elif root=='no_Philips':
+                txt='datasets/split/split_company/split_train_Philips.txt'
+            elif root=='no_SAMSUNG':
+                txt='datasets/split/split_company/split_train_SAMSUNG.txt'
+            elif root=='no_Siemens':
+                txt='datasets/split/split_company/split_train_Siemens.txt'
+            elif root=='no_TOSHIBA':
+                txt='datasets/split/split_company/split_train_TOSHIBA.txt'
+            elif root=='no_GE':
+                txt='datasets/split/split_company/split_train_GE.txt'
         with open(txt, 'r') as listFile:
             for line in listFile:
                 number, flow, image1, mask1, image2, mask2 = line.split()
-                self.flow_list += [os.path.join(root, flow)]
-                self.image_list += [[os.path.join(root, image1),
-                                     os.path.join(root, image2)]]
-                self.extra_info += [os.path.join(root, mask1)]
+                self.flow_list += [os.path.join(flow)]
+                self.image_list += [[os.path.join(image1),
+                                     os.path.join(image2)]]
+                self.extra_info += [os.path.join(mask1)]
 
 
 def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
@@ -279,7 +340,79 @@ def fetch_dataloader(args, TRAIN_DS='C+T+K+S+H'):
         aug_params = {'crop_size': args.image_size,
                       'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
         train_dataset = Database_2d_simulations_uffc(
-            aug_params, split='training')
+            aug_params, split='training',root='simulations')
+    elif args.stage == 'ESAOTE':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='ESAOTE')
+    elif args.stage == 'Hitachi':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='Hitachi')
+    elif args.stage == 'Philips':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='Philips')
+    elif args.stage == 'SAMSUNG':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='SAMSUNG')
+    elif args.stage == 'Siemens':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='Siemens')
+    elif args.stage == 'TOSHIBA':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='TOSHIBA')
+    elif args.stage == 'GE':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='GE')
+    
+    elif args.stage == 'no_ESAOTE':
+        aug_params = {'crop_size': args.image_size,
+                        'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_ESAOTE')
+    elif args.stage == 'no_Hitachi':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_Hitachi')
+    elif args.stage == 'no_Philips':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_Philips')
+    elif args.stage == 'no_SAMSUNG':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_SAMSUNG')
+    elif args.stage == 'no_Siemens':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_Siemens')
+    elif args.stage == 'no_TOSHIBA':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_TOSHIBA')
+    elif args.stage == 'no_GE':
+        aug_params = {'crop_size': args.image_size,
+                      'min_scale': -0.2, 'max_scale': 0.4, 'do_flip': False}
+        train_dataset = Database_2d_simulations_uffc(
+            aug_params, split='training',root='no_GE')
+    
     train_loader = data.DataLoader(train_dataset, batch_size=args.batch_size,
                                    pin_memory=True, shuffle=True, num_workers=16, drop_last=True)
 
